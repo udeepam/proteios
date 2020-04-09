@@ -13,11 +13,7 @@ class Featuriser:
             Data to fit the class with to get normalisations.
         dicts : `dict`
             Dictionaries.
-        """
-        self.labels = ["length", "molecular_weight", "isoelectric_point", "aromaticity", 
-                       "instability_index", "gravy", "helix", "turn", "sheet", "reduced", "oxidised", 
-                       "hydrophobicity", "flexibility", "hydrophilicity", "surface_accessibility", 
-                       "janin", "charge_at_ph1", "charge_at_ph7", "charge_at_ph12"]        
+        """   
         self.dicts = dicts
         # Fit class with data
         self.fit(data)
@@ -34,7 +30,7 @@ class Featuriser:
         # Get normalisations from data
         self.means = dict()
         self.stds = dict()
-        for i in self.labels:
+        for i in list(featurised_data.columns[:]):
             self.means[i] = featurised_data[i].mean()
             self.stds[i] = featurised_data[i].std()
         
@@ -74,7 +70,7 @@ class Featuriser:
             (num_data, features) The normalised data.            
         """        
         # Normalise features by subtract mean and divide by standard deviation
-        for i in self.labels:
+        for i in list(data.columns[:]):
             data[i] = (data[i]-self.means[i])/self.stds[i]    
         return data
     
@@ -99,6 +95,8 @@ class Featuriser:
         for i, example in enumerate(data):
             # Convert Bio.SeqRecord.SeqRecord object to string for Bio.SeqUtils.ProtParam.ProteinAnalysis
             analysed_example = ProteinAnalysis(str(example.seq))
+            first50_analysed_example = ProteinAnalysis(str(example.seq)[:50])
+            last50_analysed_example = ProteinAnalysis(str(example.seq)[-50:])
 
             features["length"].append(analysed_example.length)
             features["molecular_weight"].append(analysed_example.molecular_weight()) 
@@ -117,23 +115,35 @@ class Featuriser:
             features["sheet"].append(sheet)
 
             features["charge_at_ph1"].append(analysed_example.charge_at_pH(1)) 
-            features["charge_at_ph7"].append(analysed_example.charge_at_pH(7)) 
-            features["charge_at_ph12"].append(analysed_example.charge_at_pH(12))                  
+            # features["charge_at_ph2"].append(analysed_example.charge_at_pH(2))  
+            # features["charge_at_ph3"].append(analysed_example.charge_at_pH(3))  
+            # features["charge_at_ph4"].append(analysed_example.charge_at_pH(4))  
+            features["charge_at_ph7"].append(analysed_example.charge_at_pH(7))   
+            features["charge_at_ph12"].append(analysed_example.charge_at_pH(12))    
 
             features["hydrophobicity"].append(np.mean(analysed_example.protein_scale(self.dicts['kd'], window=5, edge=1.0)))
             features["flexibility"].append(np.mean(analysed_example.protein_scale(self.dicts['flex'], window=5, edge=1.0)))
             features["hydrophilicity"].append(np.mean(analysed_example.protein_scale(self.dicts['hw'], window=5, edge=1.0)))
             features["surface_accessibility"].append(np.mean(analysed_example.protein_scale(self.dicts['em'], window=5, edge=1.0)))
-            features["janin"].append(np.mean(analysed_example.protein_scale(self.dicts['ja'], window=5, edge=1.0)))
-    #         features["dipeptide_dg "].append(np.mean(analysed_example.protein_scale(self.dicts['diwv'], window=5, edge=1.0)))
+            features["janin"].append(np.mean(analysed_example.protein_scale(self.dicts['ja'], window=5, edge=1.0)))        
+    #         features["dipeptide_dg "].append(np.mean(analysed_example.protein_scale(self.dicts['diwv'], window=5, edge=1.0)))                                     
+
+            features["first50_hydrophobicity"].append(np.mean(first50_analysed_example.protein_scale(self.dicts['kd'], window=5, edge=1.0)))
+            features["first50_flexibility"].append(np.mean(first50_analysed_example.protein_scale(self.dicts['flex'], window=5, edge=1.0)))
+            features["first50_hydrophilicity"].append(np.mean(first50_analysed_example.protein_scale(self.dicts['hw'], window=5, edge=1.0)))
+            features["first50_surface_accessibility"].append(np.mean(first50_analysed_example.protein_scale(self.dicts['em'], window=5, edge=1.0)))
+            features["first50_janin"].append(np.mean(first50_analysed_example.protein_scale(self.dicts['ja'], window=5, edge=1.0)))
+
+            features["last50_hydrophobicity"].append(np.mean(last50_analysed_example.protein_scale(self.dicts['kd'], window=5, edge=1.0)))
+            features["last50_flexibility"].append(np.mean(last50_analysed_example.protein_scale(self.dicts['flex'], window=5, edge=1.0)))
+            features["last50_hydrophilicity"].append(np.mean(last50_analysed_example.protein_scale(self.dicts['hw'], window=5, edge=1.0)))
+            features["last50_surface_accessibility"].append(np.mean(last50_analysed_example.protein_scale(self.dicts['em'], window=5, edge=1.0)))
+            features["last50_janin"].append(np.mean(last50_analysed_example.protein_scale(self.dicts['ja'], window=5, edge=1.0)))           
 
             for key, val in analysed_example.get_amino_acids_percent().items():
                 features[key].append(val*5)       
-            first_50_analysed_example = ProteinAnalysis(str(example.seq)[:50])
-            for key, val in first_50_analysed_example.get_amino_acids_percent().items():
+            for key, val in first50_analysed_example.get_amino_acids_percent().items():
                 features["first_50_"+str(key)].append(val*5)
-            last_50_analysed_example = ProteinAnalysis(str(example.seq)[-50:])
-            for key, val in last_50_analysed_example.get_amino_acids_percent().items():
-                features["last_50_"+str(key)].append(val*5)            
-
+            for key, val in last50_analysed_example.get_amino_acids_percent().items():
+                features["last_50_"+str(key)].append(val*5) 
         return pd.DataFrame.from_dict(features)
