@@ -33,7 +33,6 @@ def get_conf_matrix(model, x, y, classes, n_splits=5):
     conf_matrices = np.zeros((4,4,n_splits))
     class_reports = np.zeros((4,4,n_splits))
     for i, (train_index, test_index) in enumerate(cv.split(x,y)):
-        print(i)
         train_x, test_x = x[train_index], x[test_index]
         train_y, test_y = y[train_index], y[test_index]
         model.fit(train_x, train_y)
